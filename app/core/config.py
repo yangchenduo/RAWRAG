@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # Milvus
     MILVUS_HOST: str = "localhost"
     MILVUS_PORT: int = 19530
+    MILVUS_USERNAME: str = ""
+    MILVUS_PASSWORD: str = ""
     
     @property
     def DATABASE_URL(self) -> str:
