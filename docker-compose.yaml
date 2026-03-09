@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   milvus:
     image: milvusdb/milvus:v2.5.4
@@ -11,6 +9,8 @@ services:
     environment:
       - ETCD_USE_EMBED=true
       - ETCD_DATA_DIR=/var/lib/milvus/etcd
+      - MILVUS_USERNAME=${MILVUS_USERNAME}
+      - MILVUS_PASSWORD=${MILVUS_PASSWORD}
     volumes:
       - ./data/milvus:/var/lib/milvus
     networks:
@@ -25,14 +25,13 @@ services:
     image: postgres:15-alpine
     container_name: local-postgres
     environment:
-      POSTGRES_DB: rag_db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
-    # 移除了有问题的 command
     networks:
       - rag-net
     restart: always
