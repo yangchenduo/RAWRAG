@@ -4,8 +4,8 @@ services:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     container_name: local-minio
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
       - "9000:9000" # MinIO API 端口
       - "9001:9001" # MinIO 控制台端口
@@ -36,8 +36,8 @@ services:
       # ✅ 关键：告诉 Milvus 去连接 docker-compose 里的 minio 服务
       # 注意：这里不能用 localhost，要用服务名 "minio"
       - MINIO_ADDRESS=minio:9000
-      - MINIO_ACCESS_KEY_ID=minioadmin
-      - MINIO_SECRET_ACCESS_KEY=minioadmin
+      - MINIO_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       # 用户配置
       - MILVUS_USERNAME=${MILVUS_USERNAME:-root}
       - MILVUS_PASSWORD=${MILVUS_PASSWORD:-Milvus}
