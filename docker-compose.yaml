@@ -69,6 +69,23 @@ services:
       - rag-net
     restart: always
 
+  # 4. pgAdmin 服务 (用于管理 PostgreSQL)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: local-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    volumes:
+      - ./data/pgadmin:/var/lib/pgadmin
+    networks:
+      - rag-net
+    restart: always
+    depends_on:
+      - postgres
+
 networks:
   rag-net:
     driver: bridge
