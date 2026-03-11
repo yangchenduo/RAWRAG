@@ -44,15 +44,16 @@ def init_db_tables():
 # 2. Milvus 模型 (存向量)
 # ==========================================
 MILVUS_COLLECTION_NAME = "rag_documents"
-VECTOR_DIMENSION = 768  # 假设使用 bge-m3 或类似模型，维度通常是 768 或 1024
+VECTOR_DIMENSION = 384  # ← 关键修改：与 embedding 模型维度一致
 
 def init_milvus_collection():
     """在 Milvus 中创建 Collection"""
     try:
         # 检查是否已存在
         if utility.has_collection(MILVUS_COLLECTION_NAME):
-            print(f"ℹ️  Collection '{MILVUS_COLLECTION_NAME}' 已存在，跳过创建")
-            return
+            print(f"ℹ️  Collection '{MILVUS_COLLECTION_NAME}' 已存在，删除旧的 Collection（维度不匹配）")
+            # 删除旧的 Collection（因为维度不对）
+            utility.drop_collection(MILVUS_COLLECTION_NAME)
 
         # 定义字段
         fields = [
@@ -76,8 +77,8 @@ def init_milvus_collection():
         # 加载到内存
         collection.load()
         
-        print(f"✅ Milvus Collection '{MILVUS_COLLECTION_NAME}' 创建并加载成功 (维度: {VECTOR_DIMENSION})")
+        print(f"✅ Milvus Collection '{MILVUS_COLLECTION_NAME}' 创建并加载成功 (维度：{VECTOR_DIMENSION})")
         
     except Exception as e:
-        print(f"❌ Milvus 初始化失败: {e}")
+        print(f"❌ Milvus 初始化失败：{e}")
         raise

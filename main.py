@@ -4,6 +4,7 @@ import psycopg2
 from pymilvus import connections
 from app.models.document import init_db_tables, init_milvus_collection
 from contextlib import asynccontextmanager
+from app.routers import rag
 
 
 @asynccontextmanager
@@ -64,6 +65,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=startup_db_client
 )
+
+# 注册路由
+app.include_router(rag.router)
 
 @app.get("/")
 async def root():

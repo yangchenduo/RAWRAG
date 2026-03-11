@@ -19,12 +19,17 @@ class Settings(BaseSettings):
     MILVUS_USERNAME: str = ""
     MILVUS_PASSWORD: str = ""
     
+    # MinIO 配置
+    MINIO_ROOT_USER: str = "minioadmin"
+    MINIO_ROOT_PASSWORD: str = "minioadmin"
+    
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     class Config:
         env_file = ".env"
+        extra = "ignore"  # 可选：忽略其他未定义的字段
 
 @lru_cache()
 def get_settings() -> Settings:
