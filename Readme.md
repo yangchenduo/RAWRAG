@@ -1,3 +1,5 @@
+> ⚠️ **许可声明**：本项目代码仅供学习和参考。允许下载和查看，但**严禁修改、严禁商用、严禁基于此代码开发衍生产品**。如需授权请联系作者。
+
 # docker安装
 cd D:\DATA\RawRAG\RAWRAG
 docker compose up -d       
