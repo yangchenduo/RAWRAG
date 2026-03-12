@@ -4,7 +4,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # 应用
     APP_NAME: str = "RawRAG"
-    DEBUG: bool = False
+    DEBUG: bool = True
 
     # PostgreSQL
     POSTGRES_HOST: str = "localhost"
@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     # MinIO 配置
     MINIO_ROOT_USER: str = "minioadmin"
     MINIO_ROOT_PASSWORD: str = "minioadmin"
+    
+    # 大模型配置
+    DASHSCOPE_API_KEY: str = ""
+    MODEL_NAME: str = "qwen-plus"
     
     @property
     def DATABASE_URL(self) -> str:

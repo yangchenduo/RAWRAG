@@ -3,6 +3,9 @@ __pycache__/
 **/__pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
 
 # Environment variables
 .env
@@ -16,9 +19,3 @@ venv/
 # History files
 .history/
 /RAWRAG/data
-
-# Python 字节码缓存
-__pycache__/
-*.pyc
-*.pyo
-*.pyd

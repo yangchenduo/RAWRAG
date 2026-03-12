@@ -1,4 +1,5 @@
 # app/routers/rag.py
+from app.utils.llm import call_llm
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from sqlalchemy.orm import Session
 from pymilvus import Collection
@@ -119,14 +120,116 @@ async def search_documents(query: str, top_k: int = 3):
         output_fields=["doc_id", "chunk_text"] # 返回原始文本和关联 ID
     )
 
-    # 3. 格式化结果
-    hits = []
+    doc_ids = set()
+    hits_data = [] # 临时存储
+    
     for hits_in_batch in results:
         for hit in hits_in_batch:
-            hits.append({
+            doc_id = hit.entity.get("doc_id")
+            if doc_id:
+                doc_ids.add(doc_id)
+            hits_data.append({
                 "score": hit.score,
                 "content": hit.entity.get("chunk_text"),
-                "doc_id": hit.entity.get("doc_id")
+                "doc_id": doc_id
             })
+
+    # 3. 从 PostgreSQL 查询这些 doc_id 对应的标题
+    db = SessionLocal()
+    doc_titles_map = {}
+    try:
+        from app.models.document import DocumentMeta
+        docs = db.query(DocumentMeta).filter(DocumentMeta.id.in_(list(doc_ids))).all()
+        for doc in docs:
+            doc_titles_map[doc.id] = doc.title
+    finally:
+        db.close()
+
+    # 4. 组装最终结果
+    final_hits = []
+    for item in hits_data:
+        final_hits.append({
+            "score": round(item["score"], 4), # 保留4位小数
+            "content": item["content"].replace("\r\n", " ").strip(), # 清理换行符
+            "source_file": doc_titles_map.get(item["doc_id"], "未知文件"), # 显示文件名
+            "doc_id": item["doc_id"]
+        })
     
-    return {"query": query, "results": hits}
+    return {"query": query, "results": final_hits}
+
+
+@router.post("/chat")
+async def rag_chat(query: str = Form(...), top_k: int = Form(default=3)):
+    """
+    RAG 核心聊天接口：
+    1. 向量检索相关片段
+    2. 构建 Prompt (上下文 + 问题)
+    3. 调用 DashScope 生成回答
+    """
+    if not query:
+        raise HTTPException(status_code=400, detail="问题不能为空")
+
+    # === 1. 向量检索 (复用之前的逻辑) ===
+    query_vector = [get_embedding(query)]
+    collection = Collection(MILVUS_COLLECTION_NAME)
+    collection.load()
+    
+    search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+    results = collection.search(
+        data=query_vector,
+        anns_field="embedding",
+        param=search_params,
+        limit=top_k,
+        output_fields=["chunk_text", "doc_id"]
+    )
+
+    # 提取上下文片段
+    context_chunks = []
+    source_files = set()
+    
+    for hits_in_batch in results:
+        for hit in hits_in_batch:
+            text = hit.entity.get("chunk_text")
+            doc_id = hit.entity.get("doc_id")
+            if text:
+                context_chunks.append(text)
+                source_files.add(str(doc_id)) # 简单记录 ID，实际可查表获取文件名
+
+    # 如果没有检索到内容
+    if not context_chunks:
+        # 直接问 LLM，不带上下文
+        final_prompt = f"请回答这个问题：{query}"
+        context_info = "无相关文档"
+    else:
+        # === 2. 构建 RAG Prompt ===
+        # 将检索到的片段拼接成上下文
+        context_text = "\n\n".join([f"[片段{i+1}]: {chunk}" for i, chunk in enumerate(context_chunks)])
+        
+        # 经典的 RAG Prompt 模板
+        final_prompt = f"""
+你是一个智能助手。请根据以下【参考信息】来回答用户的【问题】。
+如果【参考信息】中没有答案，请直接说“根据提供的资料，我无法回答这个问题”，不要编造。
+
+【参考信息】：
+{context_text}
+
+【问题】：
+{query}
+
+【回答】：
+"""
+        context_info = f"引用了 {len(context_chunks)} 个片段 (来源ID: {', '.join(source_files)})"
+
+    # === 3. 调用 Qwen ===
+    print(f"🤖 正在向 Qwen 提问... (上下文长度: {len(final_prompt)})")
+    ai_response = call_llm(final_prompt)
+
+    return {
+        "query": query,
+        "answer": ai_response,
+        "sources": {
+            "count": len(context_chunks),
+            "details": context_chunks # 返回具体片段供前端展示引用
+        },
+        "meta": context_info
+    }

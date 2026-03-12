@@ -58,9 +58,9 @@ services:
     image: postgres:15-alpine
     container_name: local-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rawrag}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rag_db}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
