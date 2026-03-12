@@ -10,18 +10,22 @@ from typing import List
 from app.models.document import DocumentMeta, SessionLocal, engine, Base, MILVUS_COLLECTION_NAME, VECTOR_DIMENSION
 from app.utils.embedding import get_embedding, get_dimension
 from app.core.config import settings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 router = APIRouter(prefix="/rag", tags=["RAG 核心功能"])
 
-# 简单的文本切片函数 (实际项目中可用 LangChain 的 RecursiveCharacterTextSplitter)
-def split_text(text: str, chunk_size: int = 500, overlap: int = 50):
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunks.append(text[start:end])
-        start += chunk_size - overlap
-    return chunks
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=600,
+    chunk_overlap=100,
+    length_function=len,
+    separators=["\n\n", "\n", "。", "！", "？", "；", " ", ""], # 针对中文优化分隔符
+)
+
+def split_text_smart(text: str):
+    """使用 LangChain 进行智能切片"""
+    chunks = text_splitter.split_text(text)
+    # 过滤掉过短的碎片（比如只有几个标点的）
+    return [c for c in chunks if len(c.strip()) > 10]
 
 @router.post("/upload")
 async def upload_document(file: UploadFile = File(...), title: str = Form(None)):
@@ -39,9 +43,13 @@ async def upload_document(file: UploadFile = File(...), title: str = Form(None))
         raise HTTPException(status_code=400, detail="文件内容为空")
 
     # 2. 文本切片
-    chunks = split_text(text_content)
+    print(f"📝 正在对文档进行智能切片...")
+    chunks = split_text_smart(text_content)
+    
     if not chunks:
-        raise HTTPException(status_code=400, detail="切片后无内容")
+        raise HTTPException(status_code=400, detail="切片后无有效内容")
+    
+    print(f"✅ 切片完成：共 {len(chunks)} 个片段 (原长度: {len(text_content)})")
 
     # 3. 准备向量数据
     print(f"正在生成 {len(chunks)} 个片段的向量...")
