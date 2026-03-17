@@ -14,7 +14,7 @@ from app.core.security import (
     verify_token # 如果需要的话
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["账户相关功能"], responses={401: {"description": "Not enough permissions"}})
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -36,7 +36,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. 【关键修改】使用 bcrypt 验证密码
+    # 3. 使用 bcrypt 验证密码
     # verify_password 内部会自动处理 salt 的提取和比对
     if not verify_password(form_data.password, user.password):
         raise HTTPException(
