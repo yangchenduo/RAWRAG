@@ -4,7 +4,8 @@ import psycopg2
 from pymilvus import connections
 from app.models.document import init_db_tables, init_milvus_collection
 from contextlib import asynccontextmanager
-from app.routers import rag
+from app.routers import rag, auth
+from fastapi.middleware.cors import CORSMiddleware
 
 
 @asynccontextmanager
@@ -66,8 +67,18 @@ app = FastAPI(
     lifespan=startup_db_client
 )
 
+# 配置CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 在生产环境中应该设置具体的前端域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 注册路由
 app.include_router(rag.router)
+app.include_router(auth.router)
 
 @app.get("/")
 async def root():
