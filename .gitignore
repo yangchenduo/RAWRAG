@@ -19,3 +19,4 @@ venv/
 # History files
 .history/
 /RAWRAG/data
+/alembic/versions

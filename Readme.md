@@ -21,6 +21,13 @@ pip freeze > requirements.txt
 ## 清楚缓存
 Remove-Item -Recurse -Force __pycache__ -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force app\__pycache__ -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force app\core\__pycache__ -ErrorAction SilentlyContinue
 
+# 数据库相关
+alembic current - 查看当前版本
+alembic upgrade head - 初始化数据库
+
+alembic revision --autogenerate -m "Add document table" - 当数据库变化时使用此命令维护数据库版本
+alembic upgrade head - 再次执行此命令升级到最新版本
+
 # 启动
 python -m uvicorn main:app --reload
 

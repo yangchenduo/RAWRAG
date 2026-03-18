@@ -1,17 +1,15 @@
 # app/models/document.py
 from sqlalchemy import Column, Integer, String, DateTime, Text, create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from pymilvus import connections, Collection, FieldSchema, CollectionSchema, DataType, utility
 
 from app.core.config import settings
+from app.db.base_class import Base
 
 # ==========================================
 # 1. PostgreSQL 模型 (存元数据)
 # ==========================================
-Base = declarative_base()
-
 class DocumentMeta(Base):
     __tablename__ = "documents"
 
