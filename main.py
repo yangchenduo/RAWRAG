@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 import psycopg2
 from pymilvus import connections
@@ -6,6 +7,9 @@ from app.models.document import init_db_tables, init_milvus_collection
 from contextlib import asynccontextmanager
 from app.routers import rag, auth
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordBearer
 
 
 @asynccontextmanager
@@ -64,9 +68,20 @@ app = FastAPI(
     title=settings.APP_NAME,
     description="手搓的 RAG 系统 - 基于 FastAPI + Milvus + Postgres",
     version="0.1.0",
-    lifespan=startup_db_client
+    lifespan=startup_db_client,
+    docs_url=None,
+    redoc_url=None,
+    openapi_tags=[
+        {"name": "账户相关功能", "description": "用户认证相关接口"},
+        {"name": "RAG 核心功能", "description": "RAG 系统核心功能接口"},
+    ],
 )
 
+# 配置全局 OAuth2 scheme，用于 Swagger UI 显示认证按钮
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+    
 # 配置CORS
 app.add_middleware(
     CORSMiddleware,
@@ -87,3 +102,14 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": settings.APP_NAME}
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html() -> HTMLResponse:
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        swagger_js_url="/static/swagger/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger/swagger-ui.css",
+        # 如果有 favicon 也可以加上：
+        # swagger_favicon_url="/static/swagger/favicon-32x32.png",
+    )

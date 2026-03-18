@@ -24,6 +24,9 @@ Remove-Item -Recurse -Force __pycache__ -ErrorAction SilentlyContinue; Remove-It
 # 启动
 python -m uvicorn main:app --reload
 
+# 创建测试用户
+python scripts/create_admin.py
+
 - API 文档 ： http://127.0.0.1:8000/docs
 - 健康检查 ： http://127.0.0.1:8000/health
 - 根路径 ： http://127.0.0.1:8000/

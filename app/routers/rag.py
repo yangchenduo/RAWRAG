@@ -1,6 +1,6 @@
 # app/routers/rag.py
 from app.utils.llm import call_llm
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
 from sqlalchemy.orm import Session
 from pymilvus import Collection
 from datetime import datetime
@@ -11,6 +11,8 @@ from app.models.document import DocumentMeta, SessionLocal, engine, Base, MILVUS
 from app.utils.embedding import get_embedding, get_dimension
 from app.core.config import settings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.models.user import User
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/rag", tags=["RAG 核心功能"])
 
@@ -28,7 +30,7 @@ def split_text_smart(text: str):
     return [c for c in chunks if len(c.strip()) > 10]
 
 @router.post("/upload")
-async def upload_document(file: UploadFile = File(...), title: str = Form(None)):
+async def upload_document(file: UploadFile = File(...), title: str = Form(None), current_user: User = Depends(get_current_user)):
     """
     上传文档：读取内容 -> 切片 -> 向量化 -> 存入 Postgres 和 Milvus
     """
@@ -104,7 +106,7 @@ async def upload_document(file: UploadFile = File(...), title: str = Form(None))
         db.close()
 
 @router.get("/search")
-async def search_documents(query: str, top_k: int = 3):
+async def search_documents(query: str, top_k: int = 3,current_user: User = Depends(get_current_user)):
     """
     搜索：问题向量化 -> Milvus 检索 -> 返回原文片段
     """
@@ -167,7 +169,7 @@ async def search_documents(query: str, top_k: int = 3):
 
 
 @router.post("/chat")
-async def rag_chat(query: str = Form(...), top_k: int = Form(default=3)):
+async def rag_chat(query: str = Form(...), top_k: int = Form(default=3),current_user: User = Depends(get_current_user)):
     """
     RAG 核心聊天接口：
     1. 向量检索相关片段
