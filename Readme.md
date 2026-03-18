@@ -25,7 +25,7 @@ Remove-Item -Recurse -Force __pycache__ -ErrorAction SilentlyContinue; Remove-It
 alembic current - 查看当前版本
 alembic upgrade head - 初始化数据库
 
-alembic revision --autogenerate -m "Add document table" - 当数据库变化时使用此命令维护数据库版本
+alembic revision --autogenerate -m "更新信息" - 当数据库结构变化时使用此命令维护数据库版本
 alembic upgrade head - 再次执行此命令升级到最新版本
 
 # 启动
