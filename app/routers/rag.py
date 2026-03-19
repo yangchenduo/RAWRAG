@@ -14,7 +14,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.models.user import User
 from app.routers.auth import get_current_user
 
-router = APIRouter(prefix="/rag", tags=["RAG 核心功能"])
+router = APIRouter(prefix="/api/rag", tags=["RAG 核心功能"])
 
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=600,

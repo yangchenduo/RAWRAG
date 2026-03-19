@@ -14,19 +14,29 @@ from app.core.security import (
     verify_token # 如果需要的话
 )
 
-router = APIRouter(prefix="/auth", tags=["账户相关功能"], responses={401: {"description": "Not enough permissions"}})
+router = APIRouter(prefix="/api/auth", tags=["账户相关功能"], responses={401: {"description": "Not enough permissions"}})
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     username: str
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 @router.post("/login", response_model=TokenResponse)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    request_data: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    username = request_data.username
+    password = request_data.password
+    
     # 1. 查找用户
-    user = db.query(User).filter(User.username == form_data.username).first()
+    user = db.query(User).filter(User.username == username).first()
     
     # 2. 验证用户存在且激活
     if not user or not user.is_active:
@@ -36,9 +46,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. 使用 bcrypt 验证密码
-    # verify_password 内部会自动处理 salt 的提取和比对
-    if not verify_password(form_data.password, user.password):
+    # 3. 验证密码
+    if not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
@@ -51,7 +60,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
-    return {"access_token": access_token, "token_type": "bearer", "username": user.username}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "username": user.username
+    }
 
 # ... (get_current_user 函数保持不变) ...
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
