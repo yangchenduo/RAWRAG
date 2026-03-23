@@ -13,6 +13,7 @@ from app.core.config import settings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.models.user import User
 from app.routers.auth import get_current_user
+from app.utils.agent import run_agent
 
 router = APIRouter(prefix="/api/rag", tags=["RAG 核心功能"])
 
@@ -242,4 +243,19 @@ async def rag_chat(query: str = Form(...), top_k: int = Form(default=3),current_
             "details": context_chunks # 返回具体片段供前端展示引用
         },
         "meta": context_info
+    }
+
+@router.post("/agent")
+async def agent_endpoint(query: str = Form(...), current_user: User = Depends(get_current_user)):
+    """
+    意图识别 + 工具调用接口
+    接收用户自然语言输入，自动识别意图并调用对应工具
+    """
+    if not query:
+        raise HTTPException(status_code=400, detail="输入不能为空")
+
+    result = run_agent(query)
+    return {
+        "input": query,
+        "result": result
     }

@@ -1,4 +1,3 @@
-# app/routers/auth.py
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -11,7 +10,7 @@ from app.core.security import (
     verify_password, 
     create_access_token, 
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    verify_token # 如果需要的话
+    verify_token
 )
 
 router = APIRouter(prefix="/api/auth", tags=["账户相关功能"], responses={401: {"description": "Not enough permissions"}})
@@ -25,49 +24,67 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     username: str
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login-swagger")  # 指向表单登录端点
 
-@router.post("/login", response_model=TokenResponse)
-def login(
-    request_data: LoginRequest,
+# 公共验证函数（可选，用于复用逻辑）
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not user.is_active:
+        return None
+    if not verify_password(password, user.password):
+        return None
+    return user
+
+# 表单登录端点（供 Swagger UI 使用）
+@router.post("/login-swagger", response_model=TokenResponse)
+def login_form(
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    username = request_data.username
-    password = request_data.password
-    
-    # 1. 查找用户
-    user = db.query(User).filter(User.username == username).first()
-    
-    # 2. 验证用户存在且激活
-    if not user or not user.is_active:
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. 验证密码
-    if not verify_password(password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # 4. 生成 Token
     access_token = create_access_token(
         data={"sub": user.username, "user_id": user.id},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    
     return {
-        "access_token": access_token, 
-        "token_type": "bearer", 
+        "access_token": access_token,
+        "token_type": "bearer",
         "username": user.username
     }
 
-# ... (get_current_user 函数保持不变) ...
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+# JSON 登录端点（供自定义客户端使用）
+@router.post("/login", response_model=TokenResponse)
+def login_json(
+    request_data: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    user = authenticate_user(db, request_data.username, request_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户名或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_access_token(
+        data={"sub": user.username, "user_id": user.id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "username": user.username
+    }
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = verify_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Token 无效或已过期")

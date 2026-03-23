@@ -78,7 +78,7 @@ app = FastAPI(
 )
 
 # 配置全局 OAuth2 scheme，用于 Swagger UI 显示认证按钮
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login-swagger")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
     
