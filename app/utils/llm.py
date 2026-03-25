@@ -22,14 +22,18 @@ def call_llm_with_tools(
     :return: 响应字典，包含 content 或 tool_calls
     """
     try:
-        response = Generation.call(
-            model=getattr(settings, 'MODEL_NAME', 'qwen-plus'),
-            messages=messages,
-            api_key=api_key,
-            result_format='message',
-            tools=tools,
-            tool_choice=tool_choice
-        )
+        kwargs = {
+            "model": getattr(settings, 'MODEL_NAME', 'qwen-plus'),
+            "messages": messages,
+            "api_key": api_key,
+            "result_format": 'message',
+        }
+
+        if tools is not None:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = tool_choice
+        
+        response = Generation.call(**kwargs)
 
         if response.status_code == HTTPStatus.OK:
             # 返回第一条 choice 的信息
@@ -43,15 +47,40 @@ def call_llm_with_tools(
             print(f"❌ LLM调用失败: {error_msg}")
             return {"content": f"⚠️ AI 服务响应异常：{response.code}", "tool_calls": None}
     except Exception as e:
+        import traceback
+        traceback.print_exc()          # 打印完整调用栈
         print(f"❌ 本地调用出错: {e}")
         return {"content": f"⚠️ 系统内部错误：{str(e)}", "tool_calls": None}
 
 # 保留原有的简单调用方式，便于兼容
 def call_llm(prompt: str, history: list = None):
-    """简单文本调用（兼容旧代码）"""
+    """
+    调用 DashScope 大模型 API
+    :param prompt: 用户的问题或构建好的 Prompt
+    :param history: 对话历史 (可选)，格式 [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+    """
     messages = []
     if history:
         messages.extend(history)
+    
+    # 将当前 prompt 作为最后一条用户消息
     messages.append({"role": "user", "content": prompt})
-    res = call_llm_with_tools(messages, tools=None)
-    return res.get("content", "")
+
+    try:
+        response = Generation.call(
+            model=getattr(settings, 'MODEL_NAME', 'qwen-plus'),
+            messages=messages,
+            api_key=api_key,
+            result_format='message'  # 返回格式为 message 列表
+        )
+
+        if response.status_code == HTTPStatus.OK:
+            return response.output.choices[0].message.content
+        else:
+            error_msg = f"Request id: {response.request_id}, Status code: {response.status_code}, error code: {response.code}, error message: {response.message}"
+            print(f"❌ LLM调用失败: {error_msg}")
+            return f"⚠️ AI 服务响应异常：{response.code}"
+
+    except Exception as e:
+        print(f"❌ 本地调用出错: {e}")
+        return f"⚠️ 系统内部错误：{str(e)}"
